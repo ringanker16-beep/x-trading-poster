@@ -1,42 +1,33 @@
 import os
 from flask import Flask, request, jsonify
-import tweepy
+from requests_oauthlib import OAuth1Session
 
 app = Flask(__name__)
-
-# X API Keys - aus Umgebungsvariablen (sicher!)
-API_KEY = os.environ.get("API_KEY")
-API_SECRET = os.environ.get("API_SECRET")
-ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
-ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
-
-def get_twitter_client():
-    return tweepy.Client(
-        consumer_key=API_KEY,
-        consumer_secret=API_SECRET,
-        access_token=ACCESS_TOKEN,
-        access_token_secret=ACCESS_TOKEN_SECRET
-    )
 
 @app.route("/post", methods=["POST"])
 def post_tweet():
     data = request.get_json()
-
     if not data or "text" not in data:
-        return jsonify({"error": "Kein Text vorhanden"}), 400
+        return jsonify({"error": "Kein Text"}), 400
 
-    text = data["text"]
+    text = data["text"][:280]
 
-    # X erlaubt max. 280 Zeichen
-    if len(text) > 280:
-        text = text[:277] + "..."
+    twitter = OAuth1Session(
+        os.environ.get("API_KEY"),
+        os.environ.get("API_SECRET"),
+        os.environ.get("ACCESS_TOKEN"),
+        os.environ.get("ACCESS_TOKEN_SECRET")
+    )
 
-    try:
-        client = get_twitter_client()
-        response = client.create_tweet(text=text)
-        return jsonify({"success": True, "tweet_id": response.data["id"]}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    response = twitter.post(
+        "https://api.twitter.com/2/tweets",
+        json={"text": text}
+    )
+
+    if response.status_code == 201:
+        return jsonify({"success": True}), 200
+    else:
+        return jsonify({"error": response.text}), 500
 
 @app.route("/health", methods=["GET"])
 def health():
