@@ -4,12 +4,14 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from requests_oauthlib import OAuth1Session
 import yfinance as yf
+from curl_cffi import requests as curl_requests
+session = curl_requests.Session(impersonate="chrome")
 
 app = Flask(__name__)
 
 def get_stock_data(ticker, level_type):
     try:
-        stock = yf.Ticker(ticker)
+        stock = yf.Ticker(ticker, session=session)
         hist_90 = stock.history(period="90d")
         hist_35 = stock.history(period="35d")
 
